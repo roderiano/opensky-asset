@@ -9,7 +9,11 @@ public class Teste : MonoBehaviour
         OpenSkyClient.Client.Connect(this);
     }
 
-    public void OnConnect() {
-        Debug.Log("teste connectado");
+    public void OnSuccessfulConnect() {
+        Debug.Log("sucesso na conexao");
+    }
+
+    public void OnUnsuccessfulConnect() {
+        Debug.Log("falha na conexao");
     }
 }

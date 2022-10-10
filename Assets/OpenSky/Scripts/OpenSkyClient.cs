@@ -4,8 +4,11 @@ using Object = UnityEngine.Object;
 
 public class OpenSkyClient {
 
-    #region Instances and Constructors
+    #region Variables and Constructors
+    private string _id;
     private string _nickname;
+
+    private bool _connected;
 
     private static OpenSkyClient _instance;
     private static Object _clientHandler;
@@ -15,8 +18,10 @@ public class OpenSkyClient {
             return _nickname;
         }
         set {
-            if(_clientHandler != null)
+            if(_connected)
                 OpenSkyLogger.Error("The nickname cannot be set after connecting to the server.");
+            else if (value == null || value == string.Empty)
+                OpenSkyLogger.Error("The nickname cannot be null or empty string.");     
             else
                 _nickname = value;
         }
@@ -32,16 +37,30 @@ public class OpenSkyClient {
     }
  
     private OpenSkyClient() {
-        _nickname = System.Guid.NewGuid().ToString();
+        _id = System.Guid.NewGuid().ToString();
+        _connected = false;
     }
     #endregion
  
     #region Public Methods
     public void Connect(Object clientHandler) {
-        _clientHandler = clientHandler;
+        try
+        {
+            _clientHandler = clientHandler;
 
+            if (nickname == null || nickname == string.Empty)
+                throw new Exception("The nickname cannot be null or empty string.");
+        }
+        catch (System.Exception e)
+        {
+            OpenSkyLogger.Error(e.Message);
+            _InvokeClientHandlerCallback("OnUnsuccessfulConnect");
+            return;
+        }
+
+        _connected = true;
         OpenSkyLogger.Info("Successfully connected to the server.");
-        _InvokeClientHandlerCallback("OnConnect");
+        _InvokeClientHandlerCallback("OnSuccessfulConnect");
     }
     #endregion
 
