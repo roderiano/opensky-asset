@@ -26,6 +26,12 @@ public class OpenSkyClient {
                 _nickname = value;
         }
     }
+
+    public string id {
+        get { return _id; }
+        set {}
+    }
+
     public static OpenSkyClient Client {
         get {
             if(_instance == null) 
