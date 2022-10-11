@@ -5,34 +5,32 @@ using UnityEditor;
 
 public class OpenSkyWatcher : MonoBehaviour
 {
-    public string _owner;
-    void Awake()
-    {
-        if(_owner == null)
-            _owner = OpenSkyClient.Client.id;
+    private string _id;
+
+    public string id {
+        get { return _id; }
+        set {}
     }
 
-    void Update()
-    {
-        GetGameObjectState();
+    void Awake() {
+        _id = System.Guid.NewGuid().ToString();
     }
 
-    private Dictionary<System.Type, string> GetGameObjectState() {
-        Dictionary<System.Type, string> goState = new Dictionary<System.Type, string>();
-        Component[] components = gameObject.GetComponents(typeof(Component));
-        
+    void FixedUpdate() {
+        ComponentData[] componentsData = OpenSkyDataHandler.Data.GetWatcherComponents(_id);
 
-        foreach(Component component in components) {
-            System.Type componentType = component.GetType();
-            if(componentType != typeof(OpenSkyWatcher))
-            {
-                if(goState.ContainsKey(componentType))
-                    goState.Remove(componentType);
-
-                goState.Add(componentType, EditorJsonUtility.ToJson(component));
-            }
+        foreach(ComponentData componentData in componentsData) {
+            if(componentData.type == typeof(Transform))
+                EditorJsonUtility.FromJsonOverwrite(componentData.data, gameObject.transform);
+            else
+                JsonUtility.FromJsonOverwrite(componentData.data, componentData.type);
         }
 
-        return goState;
     }
+
+    void Update() {
+        Component[] components = gameObject.GetComponents(typeof(Component));
+        OpenSkyDataHandler.Data.SetWatcherComponents(_id, components);
+    }
+
 }
