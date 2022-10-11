@@ -31,6 +31,9 @@ public class OpenSkyWatcher : MonoBehaviour
     void Update() {
         Component[] components = gameObject.GetComponents(typeof(Component));
         OpenSkyDataHandler.Data.SetWatcherComponents(_id, components);
+ 
+        // string data = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
+        // Debug.Log(data);
     }
 
 }

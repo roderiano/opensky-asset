@@ -54,8 +54,9 @@ public class OpenSkyClient {
         {
             _clientHandler = clientHandler;
 
-            if (nickname == null || nickname == string.Empty)
+            if (_nickname == null || _nickname == string.Empty)
                 throw new Exception("The nickname cannot be null or empty string.");
+                
         }
         catch (System.Exception e)
         {
