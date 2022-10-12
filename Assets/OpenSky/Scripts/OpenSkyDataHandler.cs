@@ -36,19 +36,28 @@ public class OpenSkyDataHandler {
             System.Type componentType = component.GetType();
             if(componentType != typeof(OpenSkyWatcher))
             {
-                componentsData[idxComponent] = new ComponentData(skyWatcherId, componentType, EditorJsonUtility.ToJson(component));
+                #if UNITY_EDITOR
+                if(component.GetType() == typeof(Transform))
+                    componentsData[idxComponent] = new ComponentData(skyWatcherId, componentType.AssemblyQualifiedName, EditorJsonUtility.ToJson(component));
+                #endif
+            
+                if(component.GetType() != typeof(Transform))
+                    componentsData[idxComponent] = new ComponentData(skyWatcherId, componentType.AssemblyQualifiedName, JsonUtility.ToJson(component));
+                    
                 idxComponent++;
             }
         }
 
-        if(watchersComponentsData.Count > 0)
-            watchersComponentsData.RemoveAll(data => data.skyWatcherId == skyWatcherId);
-        watchersComponentsData.AddRange(componentsData);
+        List<ComponentData> tempList = new List<ComponentData>();
+        if(tempList.Count > 0)
+            tempList.RemoveAll(data => data.skyWatcherId == skyWatcherId);
+        tempList.AddRange(componentsData);
+
+        watchersComponentsData = tempList;
     }
 
     public ComponentData[] GetWatcherComponents(string skyWatcherId) {
-        watchersComponentsData.FindAll(data => data.skyWatcherId == skyWatcherId);
-        return watchersComponentsData.ToArray();
+        return watchersComponentsData.FindAll(data => data.skyWatcherId == skyWatcherId).ToArray();
     }
 
     public string GetJsonWatchersComponentsData() {
@@ -56,6 +65,13 @@ public class OpenSkyDataHandler {
         wrapper.componentsData = watchersComponentsData.ToArray();
 
         return UnityEngine.JsonUtility.ToJson(wrapper);
+    }
+
+    public void SetJsonWatchersComponentsData(string json) {
+        Wrapper<ComponentData> wrapper = JsonUtility.FromJson<Wrapper<ComponentData>>(json);
+
+        watchersComponentsData.Clear();
+        watchersComponentsData.AddRange(wrapper.componentsData);
     }
    
     #endregion
@@ -65,13 +81,13 @@ public class OpenSkyDataHandler {
 public class ComponentData 
 {
     public string skyWatcherId;
-    public System.Type type;
+    public string assemblyQualifiedName;
     public string data;
 
-    public ComponentData(string skyWatcherId, System.Type type, string data) 
+    public ComponentData(string skyWatcherId, string assemblyQualifiedName, string data) 
     {
         this.skyWatcherId = skyWatcherId;
-        this.type = type;
+        this.assemblyQualifiedName = assemblyQualifiedName;
         this.data = data;
     }
 }
