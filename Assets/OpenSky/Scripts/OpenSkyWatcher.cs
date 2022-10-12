@@ -16,8 +16,8 @@ public class OpenSkyWatcher : MonoBehaviour
         _id = System.Guid.NewGuid().ToString();
     }
 
-    void FixedUpdate() {
-        ComponentData[] componentsData = OpenSkyDataHandler.Data.GetWatcherComponents(_id);
+    public void RefreshComponents() {
+        ComponentData[] componentsData = OpenSkyDataHandler.Data.GetWatcherComponentsById(_id);
 
         foreach(ComponentData componentData in componentsData) {
             System.Type type = System.Type.GetType(componentData.assemblyQualifiedName);
@@ -30,16 +30,5 @@ public class OpenSkyWatcher : MonoBehaviour
             if(type != typeof(Transform))
                 JsonUtility.FromJsonOverwrite(componentData.data, componentData.assemblyQualifiedName);
         }
-
-        Component[] components = gameObject.GetComponents(typeof(Component));
-        OpenSkyDataHandler.Data.SetWatcherComponents(_id, components);
     }
-
-    void Update() {
-        
- 
-        // string data = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
-        // Debug.Log(data);
-    }
-
 }

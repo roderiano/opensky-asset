@@ -56,7 +56,7 @@ public class OpenSkyDataHandler {
         watchersComponentsData = tempList;
     }
 
-    public ComponentData[] GetWatcherComponents(string skyWatcherId) {
+    public ComponentData[] GetWatcherComponentsById(string skyWatcherId) {
         return watchersComponentsData.FindAll(data => data.skyWatcherId == skyWatcherId).ToArray();
     }
 
@@ -74,6 +74,24 @@ public class OpenSkyDataHandler {
         watchersComponentsData.AddRange(wrapper.componentsData);
     }
    
+    public void RefreshAllWatchersComponents() {
+        OpenSkyWatcher[] watchers = GameObject.FindObjectsOfType<OpenSkyWatcher>();
+
+        foreach (OpenSkyWatcher watcher in watchers)
+            watcher.RefreshComponents();   
+    }
+
+    public void SetAllComponentsData() {
+        OpenSkyWatcher[] watchers = GameObject.FindObjectsOfType<OpenSkyWatcher>();
+        
+
+        foreach (OpenSkyWatcher watcher in watchers)
+        {
+            Component[] components = watcher.gameObject.GetComponents(typeof(Component));
+            OpenSkyDataHandler.Data.SetWatcherComponents(watcher.id, components); 
+        } 
+    }
+    
     #endregion
 }
 

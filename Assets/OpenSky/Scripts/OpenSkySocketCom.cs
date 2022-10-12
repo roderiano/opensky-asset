@@ -14,28 +14,36 @@ public class OpenSkySocketCom : MonoBehaviour
     }
 
     void RefreshServerGameData() {
-        UdpClient client = new UdpClient(5000);
-        try {
-            client.Connect("127.0.0.1", 8888);
+        UdpClient client = new UdpClient(6001);
+        client.Connect("127.0.0.1", 8888);
+        
 
-            while(!_cancelFlag) {
-                string watchersComponentsData = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
-                byte[] sendBytes = Encoding.ASCII.GetBytes(watchersComponentsData);
-                client.Send(sendBytes, sendBytes.Length);
+        while(!_cancelFlag) {
+            UnityThreadDispatcher.wkr.AddJob(() => {
+                OpenSkyDataHandler.Data.SetAllComponentsData();
+            }); 
 
-                IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 5000);
-                byte[] receiveBytes = client.Receive(ref remoteEndPoint);
-                string receivedString = Encoding.ASCII.GetString(receiveBytes);
+            Thread.Sleep(1000);
 
-                string[] pieces = receivedString.Split(new[] { ';' }, 2);
-                if(Int32.Parse(pieces[0]) == pieces[1].Length)
-                    OpenSkyDataHandler.Data.SetJsonWatchersComponentsData(pieces[1]);
+            string watchersComponentsData = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
+            byte[] sendBytes = Encoding.ASCII.GetBytes(watchersComponentsData);
+            client.Send(sendBytes, sendBytes.Length);
+
+            
+            IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 6001);
+            byte[] receiveBytes = client.Receive(ref remoteEndPoint);
+            string receivedString = Encoding.ASCII.GetString(receiveBytes);
+
+            string[] pieces = receivedString.Split(new[] { ';' }, 2);
+            if(Int32.Parse(pieces[0]) == pieces[1].Length)
                 
-                print("Message received from the server \n " + receivedString);
-            }
-        }
-        catch(Exception e) {
-            print(e.Message);
+                UnityThreadDispatcher.wkr.AddJob(() => {
+                    OpenSkyDataHandler.Data.SetJsonWatchersComponentsData(pieces[1]);
+                    OpenSkyDataHandler.Data.RefreshAllWatchersComponents();
+                    OpenSkyDataHandler.Data.SetAllComponentsData();
+                }); 
+
+                Thread.Sleep(1000);
         }
     }
 
