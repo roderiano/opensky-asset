@@ -5,7 +5,7 @@ using UnityEngine;
 internal class UnityThreadDispatcher : MonoBehaviour
 {
     internal static UnityThreadDispatcher wkr;
-    Queue<Action> jobs = new Queue<Action>();
+    internal static Queue<Action> jobs = new Queue<Action>();
 
     void Awake() {
         wkr = this;

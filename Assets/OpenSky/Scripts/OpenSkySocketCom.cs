@@ -6,6 +6,8 @@ using UnityEngine;
 using System.Threading;
 public class OpenSkySocketCom : MonoBehaviour
 {
+    private enum SocketCommand {SendData, GetData};
+
     private Thread _connectionThread;
     private volatile bool _cancelFlag = false;
     void Start() {
@@ -14,36 +16,64 @@ public class OpenSkySocketCom : MonoBehaviour
     }
 
     void RefreshServerGameData() {
-        UdpClient client = new UdpClient(6001);
+        UdpClient client = new UdpClient(8133);
+        IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 8133);
         client.Connect("127.0.0.1", 8888);
         
+        SocketCommand _command = SocketCommand.GetData;
 
         while(!_cancelFlag) {
-            UnityThreadDispatcher.wkr.AddJob(() => {
-                OpenSkyDataHandler.Data.SetAllComponentsData();
-            }); 
 
-            Thread.Sleep(1000);
+            if(_command == SocketCommand.GetData) 
+            {
+                string message = "0;get;";
+                byte[] sendBytes = Encoding.ASCII.GetBytes(message);
+                client.Send(sendBytes, sendBytes.Length);
 
-            string watchersComponentsData = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
-            byte[] sendBytes = Encoding.ASCII.GetBytes(watchersComponentsData);
-            client.Send(sendBytes, sendBytes.Length);
-
-            
-            IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 6001);
-            byte[] receiveBytes = client.Receive(ref remoteEndPoint);
-            string receivedString = Encoding.ASCII.GetString(receiveBytes);
-
-            string[] pieces = receivedString.Split(new[] { ';' }, 2);
-            if(Int32.Parse(pieces[0]) == pieces[1].Length)
                 
-                UnityThreadDispatcher.wkr.AddJob(() => {
+                byte[] receiveBytes = client.Receive(ref remoteEndPoint);
+                string receivedString = Encoding.ASCII.GetString(receiveBytes);
+
+                string[] pieces = receivedString.Split(new[] { ';' }, 2);
+                if(Int32.Parse(pieces[0]) == pieces[1].Length)
+                {
                     OpenSkyDataHandler.Data.SetJsonWatchersComponentsData(pieces[1]);
-                    OpenSkyDataHandler.Data.RefreshAllWatchersComponents();
+
+                    UnityThreadDispatcher.wkr.AddJob(() => {
+                        OpenSkyDataHandler.Data.RefreshAllWatchersComponents();
+                    });
+                    while (UnityThreadDispatcher.jobs.Count > 0) 
+                        Thread.Sleep(10);
+
+                    _command = SocketCommand.SendData;
+                }
+                else
+                {
+                    OpenSkyLogger.Info(string.Format("Package ignored by data lost. Excepceted {0} bytes but received {1}", Int32.Parse(pieces[0]), pieces[1].Length));
+                    _command = SocketCommand.GetData;
+                }
+            }
+            else if(_command == SocketCommand.SendData) 
+            {
+                string message = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
+
+                UnityThreadDispatcher.wkr.AddJob(() => {
                     OpenSkyDataHandler.Data.SetAllComponentsData();
                 }); 
+                while (UnityThreadDispatcher.jobs.Count > 0) 
+                    Thread.Sleep(10);
 
-                Thread.Sleep(1000);
+                message = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
+                message = string.Format("{0};send;{1}", message.Length, message);
+
+                byte[] sendBytes = Encoding.ASCII.GetBytes(message);
+                client.Send(sendBytes, sendBytes.Length);
+                
+                byte[] receiveBytes = client.Receive(ref remoteEndPoint);
+                string receivedString = Encoding.ASCII.GetString(receiveBytes);
+
+                _command = SocketCommand.GetData;
+            }
         }
     }
 

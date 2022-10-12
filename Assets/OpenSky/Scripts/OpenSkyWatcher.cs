@@ -28,7 +28,7 @@ public class OpenSkyWatcher : MonoBehaviour
             #endif
         
             if(type != typeof(Transform))
-                JsonUtility.FromJsonOverwrite(componentData.data, componentData.assemblyQualifiedName);
+                JsonUtility.FromJsonOverwrite(componentData.data, gameObject.GetComponent(type));
         }
     }
 }
