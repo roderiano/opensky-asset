@@ -25,7 +25,7 @@ public class OpenSkyLogger
         Debug.LogError(message);
     }
     public static void Warning(string message) {
-        message = string.Format("<color=yeallow><b>[OpenSky]</b></color> {0}", message);
+        message = string.Format("<color=orange><b>[OpenSky]</b></color> {0}", message);
         Debug.LogWarning(message);
     }
 }

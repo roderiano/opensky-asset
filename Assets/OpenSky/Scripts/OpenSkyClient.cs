@@ -8,7 +8,6 @@ public class OpenSkyClient {
     private string _id;
     private string _nickname;
 
-    private bool _connected;
 
     private static OpenSkyClient _instance;
     private static Object _clientHandler;
@@ -18,7 +17,7 @@ public class OpenSkyClient {
             return _nickname;
         }
         set {
-            if(_connected)
+            if(OpenSkySocketCom.Socket.isConnected)
                 OpenSkyLogger.Error("The nickname cannot be set after connecting to the server.");
             else if (value == null || value == string.Empty)
                 OpenSkyLogger.Error("The nickname cannot be null or empty string.");     
@@ -44,7 +43,6 @@ public class OpenSkyClient {
  
     private OpenSkyClient() {
         _id = System.Guid.NewGuid().ToString();
-        _connected = false;
     }
     #endregion
  
@@ -55,19 +53,39 @@ public class OpenSkyClient {
             _clientHandler = clientHandler;
 
             if (_nickname == null || _nickname == string.Empty)
-                throw new Exception("The nickname cannot be null or empty string.");
+            {
+                OpenSkyLogger.Error("The nickname cannot be null or empty string.");
+                return;
+            }
+
+            if (OpenSkySocketCom.Socket.isConnected)
+            {
+                OpenSkyLogger.Error("The server is already connected.");
+                return;
+            }
                 
+            
+            OpenSkySocketCom.Socket.StartCommunication();
+
         }
         catch (System.Exception e)
         {
             OpenSkyLogger.Error(e.Message);
-            _InvokeClientHandlerCallback("OnUnsuccessfulConnect");
+            _InvokeClientHandlerCallback("OnConnectFail");
             return;
         }
 
-        _connected = true;
-        OpenSkyLogger.Info("Successfully connected to the server.");
-        _InvokeClientHandlerCallback("OnSuccessfulConnect");
+        if(OpenSkySocketCom.Socket.isConnected)
+        {
+            OpenSkyLogger.Info("Successfully connected to the server.");
+            _InvokeClientHandlerCallback("OnConnect");
+        }
+    }
+
+    public void Disconnect(string reason = "") {
+        OpenSkySocketCom.Socket.StopCommunication();
+        OpenSkyLogger.Warning(string.Format("Disconnected from the server. {0}", reason));
+        _InvokeClientHandlerCallback("OnDisconnect");
     }
     #endregion
 
