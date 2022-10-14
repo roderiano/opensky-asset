@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using UnityEngine;
 public class OpenSkySocketCom
 {
     private enum SocketCommand {SendData, GetData};
@@ -48,7 +49,6 @@ public class OpenSkySocketCom
                     string message = "0;get;";
                     byte[] sendBytes = Encoding.ASCII.GetBytes(message);
                     client.Send(sendBytes, sendBytes.Length);
-
                     
                     byte[] receiveBytes = client.Receive(ref remoteEndPoint);
                     string receivedString = Encoding.ASCII.GetString(receiveBytes);
@@ -56,10 +56,11 @@ public class OpenSkySocketCom
                     string[] pieces = receivedString.Split(new[] { ';' }, 2);
                     if(Int32.Parse(pieces[0]) == pieces[1].Length)
                     {
-                        OpenSkyDataHandler.Data.SetJsonWatchersComponentsData(pieces[1]);
+                        DataPackage<ClientData> dataPackage = JsonUtility.FromJson<DataPackage<ClientData>>(pieces[1]);
+                        OpenSkyDataHandler.Data.SetAnotherClientsData(dataPackage);
 
                         UnityThreadDispatcher.wkr.AddJob(() => {
-                            OpenSkyDataHandler.Data.RefreshAllWatchersComponents();
+                            OpenSkyDataHandler.Data.UpdateAnotherClientsByData();
                         });
                         while (UnityThreadDispatcher.jobs.Count > 0) 
                             Thread.Sleep(10);
@@ -74,16 +75,18 @@ public class OpenSkySocketCom
                 }
                 else if(_command == SocketCommand.SendData) 
                 {
-                    string message = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
-
                     UnityThreadDispatcher.wkr.AddJob(() => {
-                        OpenSkyDataHandler.Data.SetAllComponentsData();
+                        OpenSkyDataHandler.Data.SetOwnClientData();
                     }); 
                     while (UnityThreadDispatcher.jobs.Count > 0) 
                         Thread.Sleep(10);
 
-                    message = OpenSkyDataHandler.Data.GetJsonWatchersComponentsData();
-                    message = string.Format("{0};send;{1}", message.Length, message);
+                    DataPackage<ClientData> dataPackage = new DataPackage<ClientData>();
+                    ClientData[] clientData = { OpenSkyDataHandler.Data.GetOwnClientData() };
+
+                    dataPackage.clientsData = clientData;
+                    string message = UnityEngine.JsonUtility.ToJson(dataPackage);
+                    message = string.Format("{0};set;{1}", message.Length, message);
 
                     byte[] sendBytes = Encoding.ASCII.GetBytes(message);
                     client.Send(sendBytes, sendBytes.Length);

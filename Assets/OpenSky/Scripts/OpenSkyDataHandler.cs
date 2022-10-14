@@ -9,7 +9,7 @@ public class OpenSkyDataHandler {
 
     #region Variables and Constructors
 
-    private List<ComponentData> watchersComponentsData;
+    private List<ClientData> clientsData;
     private static OpenSkyDataHandler _instance;
 
     public static OpenSkyDataHandler Data {
@@ -23,95 +23,105 @@ public class OpenSkyDataHandler {
     }
  
     private OpenSkyDataHandler() { 
-        watchersComponentsData = new List<ComponentData>();
+        clientsData = new List<ClientData>();
     }
     #endregion
  
     #region Public Methods
-    public void SetWatcherComponents(string skyWatcherId, Component[] components) {
-        ComponentData[] componentsData = new ComponentData[components.Length - 1];
 
-        int idxComponent = 0;
-        foreach(Component component in components) {
-            System.Type componentType = component.GetType();
-            if(componentType != typeof(OpenSkyWatcher))
-            {
-                #if UNITY_EDITOR
-                if(component.GetType() == typeof(Transform))
-                    componentsData[idxComponent] = new ComponentData(skyWatcherId, componentType.AssemblyQualifiedName, EditorJsonUtility.ToJson(component));
-                #endif
-            
-                if(component.GetType() != typeof(Transform))
-                    componentsData[idxComponent] = new ComponentData(skyWatcherId, componentType.AssemblyQualifiedName, JsonUtility.ToJson(component));
-                    
-                idxComponent++;
-            }
-        }
+    public void SetAnotherClientsData(DataPackage<ClientData> dataPackage) {
+        if(clientsData.Count > 0)
+            clientsData.RemoveAll(client => client.id != OpenSkyClient.Client.id);
 
-        List<ComponentData> tempList = new List<ComponentData>();
-        if(tempList.Count > 0)
-            tempList.RemoveAll(data => data.skyWatcherId == skyWatcherId);
-        tempList.AddRange(componentsData);
-
-        watchersComponentsData = tempList;
-    }
-
-    public ComponentData[] GetWatcherComponentsById(string skyWatcherId) {
-        return watchersComponentsData.FindAll(data => data.skyWatcherId == skyWatcherId).ToArray();
-    }
-
-    public string GetJsonWatchersComponentsData() {
-        Wrapper<ComponentData> wrapper = new Wrapper<ComponentData>();
-        wrapper.componentsData = watchersComponentsData.ToArray();
-
-        return UnityEngine.JsonUtility.ToJson(wrapper);
-    }
-
-    public void SetJsonWatchersComponentsData(string json) {
-        Wrapper<ComponentData> wrapper = JsonUtility.FromJson<Wrapper<ComponentData>>(json);
-
-        watchersComponentsData.Clear();
-        watchersComponentsData.AddRange(wrapper.componentsData);
+        clientsData.AddRange(dataPackage.clientsData);
     }
    
-    public void RefreshAllWatchersComponents() {
+    public void UpdateAnotherClientsByData() {
         OpenSkyWatcher[] watchers = GameObject.FindObjectsOfType<OpenSkyWatcher>();
-
-        foreach (OpenSkyWatcher watcher in watchers)
-            watcher.RefreshComponents();   
-    }
-
-    public void SetAllComponentsData() {
-        OpenSkyWatcher[] watchers = GameObject.FindObjectsOfType<OpenSkyWatcher>();
-        
 
         foreach (OpenSkyWatcher watcher in watchers)
         {
-            Component[] components = watcher.gameObject.GetComponents(typeof(Component));
-            OpenSkyDataHandler.Data.SetWatcherComponents(watcher.id, components); 
+            foreach(ClientData clientData in clientsData)
+            {
+                if(clientData.id != watcher.owner)
+                {
+                    foreach(WatcherData watcherData in clientData.watchersData)
+                    {
+                        if(watcherData.id == watcher.id)
+                            watcher.RefreshByComponentsData(watcherData.componentsData);
+                    }
+                }
+            }
+        }
+    }
+
+    public void SetOwnClientData() {
+        OpenSkyWatcher[] watchers = GameObject.FindObjectsOfType<OpenSkyWatcher>();
+        
+        List<WatcherData> watchersData = new List<WatcherData>();
+        foreach (OpenSkyWatcher watcher in watchers)
+        {
+            if(watcher.isOwner)
+            {
+                ComponentData[] componentsData = watcher.GetComponentsData(); 
+                WatcherData watcherData = new WatcherData(watcher.id, componentsData);
+                watchersData.Add(watcherData);
+            }
         } 
+
+        ClientData clientData = new ClientData(OpenSkyClient.Client.id, watchersData.ToArray());
+
+        if(clientsData.Count > 0)
+            clientsData.RemoveAll(client => client.id == OpenSkyClient.Client.id);
+        clientsData.Add(clientData);
+    }
+
+    public ClientData GetOwnClientData() {
+        return clientsData.Find(client => client.id == OpenSkyClient.Client.id);
     }
     
     #endregion
 }
 
 [System.Serializable]
-public class ComponentData 
+public class ClientData 
 {
-    public string skyWatcherId;
+    public string id;
+    public WatcherData[] watchersData;
+
+    public ClientData(string id, WatcherData[] watchersData) 
+    {
+        this.id = id;
+        this.watchersData = watchersData;
+    }
+}
+
+[System.Serializable]
+public class WatcherData 
+{
+    public string id;
+    public ComponentData[] componentsData;
+    public WatcherData(string id, ComponentData[] componentsData) 
+    {
+        this.id = id;
+        this.componentsData = componentsData;
+    }
+}
+
+[System.Serializable]
+public class ComponentData {
     public string assemblyQualifiedName;
     public string data;
 
-    public ComponentData(string skyWatcherId, string assemblyQualifiedName, string data) 
+    public ComponentData(string assemblyQualifiedName, string data) 
     {
-        this.skyWatcherId = skyWatcherId;
         this.assemblyQualifiedName = assemblyQualifiedName;
         this.data = data;
     }
 }
 
 [System.Serializable]
-public class Wrapper<T>
+public class DataPackage<T>
 {
-    public ComponentData[] componentsData;
+    public ClientData[] clientsData;
 }
