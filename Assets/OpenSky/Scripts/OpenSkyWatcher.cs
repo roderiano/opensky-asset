@@ -5,62 +5,51 @@ using UnityEditor;
 
 public class OpenSkyWatcher : MonoBehaviour
 {
-    private string _id = null;
-    private string _owner = null;
+    public string id = null;
+    public string owner = null;
+    public bool global = false;
 
-    public string id {
-        get { return _id; }
-        set {}
+
+    public bool isOwner
+    {
+        get { return owner == OpenSkyClient.Client.id; }
     }
 
-    public string owner {
-        get { return _owner; }
-        set {}
+    void Awake()
+    {
+        id = System.Guid.NewGuid().ToString();
+        global = OpenSkySocketCom.Socket.isConnected ? false : true;
     }
 
-    public bool isOwner {
-        get { return _owner == OpenSkyClient.Client.id; }
-        set {}
-    }
-
-    void Awake() {
-        _id = System.Guid.NewGuid().ToString();
-    }
-
-    void Start() {
-        if(_owner == null)
-            _owner = OpenSkyClient.Client.id;
-    }
-
-    public void RefreshByComponentsData(ComponentData[] componentsData) {
-        foreach(ComponentData componentData in componentsData) {
+    public void RefreshByComponentsData(ComponentData[] componentsData)
+    {
+        foreach (ComponentData componentData in componentsData)
+        {
             System.Type type = System.Type.GetType(componentData.assemblyQualifiedName);
 
-            #if UNITY_EDITOR
-                if(type == typeof(Transform))
-                    EditorJsonUtility.FromJsonOverwrite(componentData.data, gameObject.transform);
-            #endif
-        
-            if(type != typeof(Transform))
+#if UNITY_EDITOR
+            if (type == typeof(Transform))
+                EditorJsonUtility.FromJsonOverwrite(componentData.data, gameObject.transform);
+#endif
+
+            if (type != typeof(Transform))
                 JsonUtility.FromJsonOverwrite(componentData.data, gameObject.GetComponent(type));
         }
     }
 
-    public ComponentData[] GetComponentsData() {
+    public ComponentData[] GetComponentsData()
+    {
         Component[] components = gameObject.GetComponents(typeof(Component));
-        ComponentData[] componentsData = new ComponentData[components.Length - 1];
+        ComponentData[] componentsData = new ComponentData[components.Length];
 
         int idxComponent = 0;
-        foreach(Component component in components) {
+        foreach (Component component in components)
+        {
             System.Type componentType = component.GetType();
-            if(componentType != typeof(OpenSkyWatcher))
-            {
-            
-                if(component.GetType() != typeof(Transform))
-                    componentsData[idxComponent] = new ComponentData(componentType.AssemblyQualifiedName, JsonUtility.ToJson(component));
-                    
-                idxComponent++;
-            }
+            if (componentType != typeof(Transform))
+                componentsData[idxComponent] = new ComponentData(componentType.AssemblyQualifiedName, JsonUtility.ToJson(component));
+
+            idxComponent++;
         }
 
         return componentsData;

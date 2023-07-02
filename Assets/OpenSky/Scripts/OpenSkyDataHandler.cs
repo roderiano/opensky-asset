@@ -64,7 +64,7 @@ public class OpenSkyDataHandler {
             if(watcher.isOwner)
             {
                 ComponentData[] componentsData = watcher.GetComponentsData(); 
-                WatcherData watcherData = new WatcherData(watcher.id, componentsData);
+                WatcherData watcherData = new WatcherData(watcher.id, watcher.owner, componentsData);
                 watchersData.Add(watcherData);
             }
         } 
@@ -78,6 +78,24 @@ public class OpenSkyDataHandler {
 
     public ClientData GetOwnClientData() {
         return clientsData.Find(client => client.id == OpenSkyClient.Client.id);
+    }
+
+    public List<WatcherData> GetGlobalWatchersData() {
+
+        OpenSkyWatcher[] watchers = GameObject.FindObjectsOfType<OpenSkyWatcher>();
+        
+        List<WatcherData> watchersData = new List<WatcherData>();
+        foreach (OpenSkyWatcher watcher in watchers)
+        {
+            if(watcher.global)
+            {
+                ComponentData[] componentsData = watcher.GetComponentsData(); 
+                WatcherData watcherData = new WatcherData(watcher.id, watcher.owner, componentsData);
+                watchersData.Add(watcherData);
+            }
+        } 
+
+        return watchersData;
     }
     
     #endregion
@@ -100,10 +118,12 @@ public class ClientData
 public class WatcherData 
 {
     public string id;
+    public string owner;
     public ComponentData[] componentsData;
-    public WatcherData(string id, ComponentData[] componentsData) 
+    public WatcherData(string id, string owner, ComponentData[] componentsData) 
     {
         this.id = id;
+        this.owner = owner;
         this.componentsData = componentsData;
     }
 }
@@ -123,5 +143,6 @@ public class ComponentData {
 [System.Serializable]
 public class DataPackage<T>
 {
+    public string clientId = OpenSkyClient.Client.id;
     public ClientData[] clientsData;
 }

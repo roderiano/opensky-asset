@@ -4,9 +4,10 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using UnityEngine;
+using System.Collections.Generic;
 public class OpenSkySocketCom
 {
-    private enum SocketCommand {SendData, GetData};
+    private enum SocketCommand {SyncGame, GetData, SendData};
     public bool isConnected {
         get { return (_connectionThread != null && !_connectionThread.IsAlive); }
     }
@@ -40,11 +41,37 @@ public class OpenSkySocketCom
             IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 8133);
             client.Connect("127.0.0.1", 8888);
             
-            SocketCommand _command = SocketCommand.GetData;
+            SocketCommand _command = SocketCommand.SyncGame;
 
             while(!_cancelFlag) {
 
-                if(_command == SocketCommand.GetData) 
+                if(_command == SocketCommand.SyncGame) 
+                {
+                    List<WatcherData> watchersData = new List<WatcherData>();
+
+                    UnityThreadDispatcher.wkr.AddJob(() => {
+                        watchersData = OpenSkyDataHandler.Data.GetGlobalWatchersData();
+                    }); 
+                    while (UnityThreadDispatcher.jobs.Count > 0) 
+                        Thread.Sleep(10);
+                    Thread.Sleep(50);
+
+                    DataPackage<ClientData> dataPackage = new DataPackage<ClientData>();
+                    ClientData[] clientData = { new ClientData(OpenSkyClient.Client.id, watchersData.ToArray()) };
+
+                    dataPackage.clientsData = clientData;
+                    string message = UnityEngine.JsonUtility.ToJson(dataPackage);
+                    message = string.Format("{0};sync;{1}", message.Length, message);
+
+                    byte[] sendBytes = Encoding.ASCII.GetBytes(message);
+                    client.Send(sendBytes, sendBytes.Length);
+                    
+                    byte[] receiveBytes = client.Receive(ref remoteEndPoint);
+                    string receivedString = Encoding.ASCII.GetString(receiveBytes);
+
+                    _command = SocketCommand.GetData;
+                }
+                else if(_command == SocketCommand.GetData) 
                 {
                     string message = "0;get;";
                     byte[] sendBytes = Encoding.ASCII.GetBytes(message);
@@ -64,6 +91,7 @@ public class OpenSkySocketCom
                         });
                         while (UnityThreadDispatcher.jobs.Count > 0) 
                             Thread.Sleep(10);
+                        Thread.Sleep(50);
 
                         _command = SocketCommand.SendData;
                     }
@@ -80,6 +108,7 @@ public class OpenSkySocketCom
                     }); 
                     while (UnityThreadDispatcher.jobs.Count > 0) 
                         Thread.Sleep(10);
+                    Thread.Sleep(50);
 
                     DataPackage<ClientData> dataPackage = new DataPackage<ClientData>();
                     ClientData[] clientData = { OpenSkyDataHandler.Data.GetOwnClientData() };
